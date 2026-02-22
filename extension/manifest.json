@@ -9,7 +9,7 @@
   "content_scripts": [
     {
       "js": ["content-script.js"],
-      "matches": ["https://*/*"]
+      "matches": ["<all_urls>"]
     }
   ],
   "background": {
