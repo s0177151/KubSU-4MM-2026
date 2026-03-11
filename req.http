@@ -1,0 +1,30 @@
+###
+
+# @timeout 600
+POST http://localhost:11434/api/generate
+Content-Type: application/json
+
+{
+  "model": "deepseek-r1:1.5b",
+  "prompt": "Лучший ВУЗ в Краснодаре?",
+  "stream": false
+}
+
+###
+
+POST http://127.0.0.1:8000/my-chat-gpt
+Content-Type: application/json
+
+{
+  "prompt": "Лучший ВУЗ в Краснодаре?"
+}
+
+
+###
+
+POST http://127.0.0.1:8000/my-deep-seek
+Content-Type: application/json
+
+{
+  "prompt": "Лучший ВУЗ в Краснодаре?"
+}
