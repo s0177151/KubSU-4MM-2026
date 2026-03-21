@@ -49,32 +49,38 @@ class PageContentParser {
   }
 
   extractTextContent() {
-    return document.body?.innerText 
-      ? document.body.innerText.trim().slice(0, this.config.MAX_TEXT_LENGTH)
-      : '';
+    if (!document.body?.innerText) {
+      return "";
+    }
+    return document.body.innerText.trim().slice(0, this.config.MAX_TEXT_LENGTH);
   }
 
   extractHeaders() {
-    let headersText = '';
-    
+    const headers = [];
     for (let level = 1; level <= 6; level++) {
-      const headers = this.getElementsText(`h${level}`);
-      if (headers.length) {
-        headersText += `\n\n Заголовки h${level}: ${headers.join(', ')}`;
-      }
+      document.querySelectorAll(`h${level}`).forEach((header) => {
+        const text = header.innerText.trim();
+        if (text) {
+          headers.push(text);
+        }
+      });
     }
-    
-    return headersText;
+    return headers.join(".");
   }
 
   extractSemanticContent() {
     let semanticText = '';
     
     this.selectors.SEMANTIC_TAGS.forEach(tag => {
-      const content = this.getElementsText(tag, true);
+      const content = [];
+      document.querySelectorAll(tag).forEach(el => {
+        const text = el.textContent.trim();
+        if (text) {
+          content.push(text.slice(0, this.config.MAX_SUBTEXT_LENGTH));
+        }
+      });
       if (content.length) {
-        const truncatedContent = content.join(', ').slice(0, this.config.MAX_SUBTEXT_LENGTH);
-        semanticText += `\n\n Семантический тег ${tag}: ${truncatedContent}`;
+        semanticText += `\n\n Семантический тег ${tag}: ${content.join(', ')}`;
       }
     });
     
@@ -96,30 +102,22 @@ class PageContentParser {
 
   extractImageDescriptions() {
     const images = document.querySelectorAll('img[alt]');
-    const validAlts = Array.from(images)
-      .map(img => img.alt.trim())
-      .filter(alt => 
-        alt.length > this.config.MIN_ALT_LENGTH && 
-        alt.length < this.config.MAX_SUBTEXT_LENGTH
-      )
-      .slice(0, this.config.MAX_IMAGES);
+    const validAlts = [];
+    images.forEach(img => {
+      const alt = img.alt.trim();
+      if (alt.length > this.config.MIN_ALT_LENGTH && alt.length < this.config.MAX_SUBTEXT_LENGTH) {
+        validAlts.push(alt);
+      }
+    });
     
     return validAlts.length 
-      ? `\n\n Описания изображений: ${validAlts.join(' | ')}`
+      ? `\n\n Описания изображений: ${validAlts.slice(0, this.config.MAX_IMAGES).join(' | ')}`
       : '';
-  }
-
-  getElementsText(selector, truncate = false) {
-    const elements = document.querySelectorAll(selector);
-    return Array.from(elements)
-      .map(el => el.textContent.trim())
-      .filter(text => text !== '');
   }
 
   parse() {
     const parts = [
       this.extractTextContent(),
-      this.extractHeaders(),
       this.extractSemanticContent(),
       this.extractMetadata(),
       this.extractImageDescriptions()
@@ -129,25 +127,24 @@ class PageContentParser {
   }
 }
 
-function createPagePayload() {
+function getCurrentTimestamp() {
+  const date = new Date();
+  return date.toISOString();
+}
+
+window.addEventListener('load', () => {
   const parser = new PageContentParser();
   
-  return {
-    type: 'view',
+  const payload = {
+    type: "view",
     url: location.href,
-    title: document.title || '',
-    lang: document.documentElement?.lang || '',
-    text: parser.parse()
+    title: document.title || "",
+    lang: document.documentElement?.lang || "",
+    text: parser.parse(),
+    headers: parser.extractHeaders(),
+    timestamp: getCurrentTimestamp()
   };
-}
 
-function sendPageData() {
-  const payload = createPagePayload();
+  console.log("Sending payload:", payload);
   chrome.runtime.sendMessage(payload);
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', sendPageData);
-} else {
-  sendPageData();
-}
+});
